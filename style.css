@@ -1,0 +1,74 @@
+@import url("https://cdn.jsdelivr.net/npm/modern-normalize@2.0.0/modern-normalize.min.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.12/latin.css");
+
+body {
+    font-family: "Inter", sans-serif;
+    background: #F7F7F7;
+    color: #333333;
+}
+
+/* h1, h2, h3, h4, h5, h6 {
+    font-weight: 300;
+    font-size: 10px;
+} */
+
+p {
+    padding: 0.5rem 0 1rem 0;
+    margin: 0;
+}
+
+a {
+    color: #666666;
+}
+
+.category-item {
+    margin-left: 25px;
+}
+
+.title-item {
+    font-weight: 600;
+    margin-left: 10px;
+    margin-top: 20px;
+}
+main {
+    padding: 30px;
+    max-width: 1200px;
+    margin:0 auto;
+}
+
+#small-multiples {
+    background-color: #E3E3B5;
+    display: grid; /* Use grid layout for structured rows and columns */
+    grid-template-rows: repeat(3, 170px); /* Three rows of fixed height */
+    grid-auto-flow: column; /* Add items column by column */
+    grid-gap: 10px; /* Space between items */
+    overflow-x: auto; /* Enable horizontal scrolling */
+    overflow-y: hidden; /* Disable vertical scrolling */
+    max-height: calc(3 * 170px + 50px); /* Limit height for 3 rows with gap */
+    width: 100%; /* Ensure container uses full width */
+    padding: 10px;
+    box-sizing: border-box;
+    white-space: nowrap; /* Ensure no wrapping */
+}
+
+.small-multiple {
+    display: flex;
+    flex-direction: column; 
+    width: 200px;
+    height: 150px;
+    overflow: hidden;
+    margin: 10px;
+    flex: 0 0 200px;
+}
+
+.small-multiple h4 {
+    font-weight: 300;
+    font-size: 10px;
+    margin: 0; /* Remove any default margins */
+    padding: 0; /* Remove padding */
+    line-height: 1.2; /* Adjust line spacing as needed */
+    overflow: hidden; /* Ensure no overflow */
+    white-space: normal; /* Allow wrapping */
+    height: 50px; /* Set a fixed height to maintain alignment */
+    display: block; /* Ensure block-level layout */
+}
