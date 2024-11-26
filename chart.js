@@ -22,7 +22,37 @@ data.forEach(d => {
     d.Tomato = +d.Tomato;
 });
 
-// #region Chart 1
+
+const countryColors = {
+  France: "#CCCE9E",       // Grey-green
+  Spain: "#929764",        // moss
+  Morocco: "#E09F3E",      // Gold
+  Italy: "#fcbbfc",        // pink
+  Germany: "#5B6652",      // Olive
+  Portugal: "#cf5877",     // Flesh pink
+  "Unknown": "#5D545A",          // Unknown
+  Latvia: "#224b5b",       // Dark teal
+  Japan: "#BF6535",        // Thai tea
+  Chile: "#99A88C",        // Sage
+  "Cape Verde": "#F0C977", // Sunshine
+  China: "#E0AC73",        // Light tangerine
+  Armenia: "#c78fa3",      // Pink
+  USA: "#2F5C5B",          // just another blue green
+  Denmark: "#7091ca",      // Blue sky
+  Norway: "#5DA9E9",       // Light blue
+  Poland: "#E63946",       // Rose red
+  Peru: "#d0d083",         // Olive oil
+  "Poland and Germany": "#75394D", // grey reddish
+  "El Salvador": "#2A9D8F", // Turquoise
+  Canada: "#65496E",        // purple
+  Scotland: "#A8DADC",      // Seafoam
+  Russia: "#8D99AE",        // Steel blue
+  Taiwan: "#FFB703",        // Goldenrod
+  Korea: "#118AB2",         // Deep teal
+  Greece: "#457B9D"         // Mediterranean blue
+};
+
+// #region Chart 1 small multiples
 
 // Data Chart 1:
 const chart1Data = data.map(d => ({
@@ -46,35 +76,6 @@ const countryCounts = d3.rollup(
 );
 // Log the result
 console.log("Unique Countries and Counts:", Array.from(countryCounts.entries()));
-
-const countryColors = {
-    France: "#CCCE9E",       // Grey-green
-    Spain: "#929764",        // moss
-    Morocco: "#E09F3E",      // Gold
-    Italy: "#FFF3B0",        // Vanilla
-    Germany: "#5B6652",      // Olive
-    Portugal: "#cf5877",     // Flesh pink
-    "Unknown": "#5D545A",          // Unknown
-    Latvia: "#224b5b",       // Dark teal
-    Japan: "#BF6535",        // Thai tea
-    Chile: "#99A88C",        // Sage
-    "Cape Verde": "#F0C977", // Sunshine
-    China: "#E0AC73",        // Light tangerine
-    Armenia: "#c78fa3",      // Pink
-    USA: "#2F5C5B",          // just another blue green
-    Denmark: "#7091ca",      // Blue sky
-    Norway: "#5DA9E9",       // Light blue
-    Poland: "#E63946",       // Rose red
-    Peru: "#d0d083",         // Olive oil
-    "Poland and Germany": "#75394D", // grey reddish
-    "El Salvador": "#2A9D8F", // Turquoise
-    Canada: "#65496E",        // purple
-    Scotland: "#A8DADC",      // Seafoam
-    Russia: "#8D99AE",        // Steel blue
-    Taiwan: "#FFB703",        // Goldenrod
-    Korea: "#118AB2",         // Deep teal
-    Greece: "#457B9D"         // Mediterranean blue
-};
 
 function generateSineWavePath(startX, startY, width, amplitude, frequency, steps) {
     let path = `M${startX},${startY}`; // Start point of the path
@@ -376,305 +377,108 @@ d3.select('#app') // Target the #app div
 
     // #endregion
 
-// #region Chart 2
-// Chart 2:
-// Group by country and select the required fields
-const chart2Data = Array.from(
-    d3.rollup(
-      data.filter(d => d.Origin !== "?" && d.Origin !== "Poland and Germany" ),
-        v => {
-            const firstEntry = v[0];
-            return {
-                country: firstEntry.Origin,
-                distance: firstEntry.Miles,
-                angle: firstEntry.Degrees
-            }; //first entry because all entries for a country are the same
-        },
-        d => d.Origin // Group by country (Origin)
-    ).values() // Get the grouped values
-  );
-  
-  console.log("Chart 2 Data:", chart2Data);
+// #region Chart 2 country spokes
 
-const width2 = 800; // Width of SVG
-const height2 = 800; // Height of SVG
+// Group by country and select the required fields
+// Filter out "USA" and group by country to select the required fields
+const chart2Data = Array.from(
+  d3.rollup(
+    data.filter(d => d.Origin !== "?" && d.Origin !== "Poland and Germany" && d.Origin !== "USA"),
+    v => {
+        const firstEntry = v[0];
+        return {
+            country: firstEntry.Origin,
+            distance: firstEntry.Miles,
+            angle: firstEntry.Degrees,
+            count: v.length // Number of entries for the country
+        };
+    },
+    d => d.Origin
+  ).values()
+);
+
+
+const minAngleDifference = 3; // Minimum angle difference in degrees
+
+// Function to adjust angles to ensure visibility
+function adjustAngles(data) {
+  const sortedData = [...data].sort((a, b) => a.angle - b.angle); // Sort by angle
+  for (let i = 1; i < sortedData.length; i++) {
+    const prev = sortedData[i - 1];
+    const curr = sortedData[i];
+    if (curr.angle - prev.angle < minAngleDifference) {
+      // Shift the current angle to maintain the minimum difference
+      curr.angle = prev.angle + minAngleDifference;
+    }
+  }
+  return sortedData;
+}
+
+// Adjust angles for visibility
+const adjustedChart2Data = adjustAngles(chart2Data);
+
+
+console.log("Chart 2 Data:", adjustedChart2Data);
+
+const width2 = 900; // Width SVG
+const height2 = 900; // Height of SVG
 const margin2 = 50; // Margin around the chart
 const centerX = width2 / 2;
 const centerY = height2 / 2;
 
+const minRadius = 40; // Radius inside which no spokes will start
+
 // Create SVG
-const svg = d3.select("body")
+const svg2 = d3.select("body")
   .append("svg")
   .attr("width", width2)
   .attr("height", height2);
 
 // Define the radius scale (distance to pixels)
-const radiusScale = d3.scaleLinear()
+const radiusScale2 = d3.scaleLinear()
   .domain([0, d3.max(chart2Data, d => d.distance)]) // Input domain (distances)
-  .range([0, (width2 - margin2 * 2) / 2]); // Output range (radius)
+  .range([minRadius, (width2 - margin2 * 2) / 2]); // Output range (radius)
 
-// Add lines (spokes)
-svg.selectAll("line")
-  .data(chart2Data)
+// Add lines (spokes) with starting radius
+svg2.selectAll("line")
+  .data(adjustedChart2Data)
   .join("line")
-  .attr("x1", centerX)
-  .attr("y1", centerY)
-  .attr("x2", d => centerX + radiusScale(d.distance) * Math.cos((d.angle - 90) * Math.PI / 180))
-  .attr("y2", d => centerY + radiusScale(d.distance) * Math.sin((d.angle - 90) * Math.PI / 180))
-  .attr("stroke", "black")
-  .attr("stroke-width", 1);
+  .attr("x1", d => centerX + minRadius * Math.cos((d.angle - 90) * Math.PI / 180))
+  .attr("y1", d => centerY + minRadius * Math.sin((d.angle - 90) * Math.PI / 180))
+  .attr("x2", d => centerX + radiusScale2(d.distance) * Math.cos((d.angle - 90) * Math.PI / 180))
+  .attr("y2", d => centerY + radiusScale2(d.distance) * Math.sin((d.angle - 90) * Math.PI / 180))
+  .attr("stroke", d => countryColors[d.country] || "gray") // Use color from the array or default to gray
+  .attr("stroke-width", 4);
 
 // Add country labels
-svg.selectAll("text")
-  .data(chart2Data)
+const flippedCountries = ["Taiwan", "Korea", "El Salvador", "Canada", "Japan"]; // Countries to flip text
+const labelOffset = 25; // Extra offset to avoid overlapping with the line
+
+const tooltip = d3.select("#tooltip");
+console.log(tooltip); // Should output the tooltip selection
+svg2.selectAll("text")
+  .data(adjustedChart2Data)
   .join("text")
-  .attr("x", d => centerX + (radiusScale(d.distance) + 10) * Math.cos((d.angle - 90) * Math.PI / 180))
-  .attr("y", d => centerY + (radiusScale(d.distance) + 10) * Math.sin((d.angle - 90) * Math.PI / 180))
+  .attr("x", d => centerX + (radiusScale2(d.distance) + labelOffset) * Math.cos((d.angle - 90) * Math.PI / 180))
+  .attr("y", d => centerY + (radiusScale2(d.distance) + labelOffset) * Math.sin((d.angle - 90) * Math.PI / 180))
   .text(d => d.country)
   .attr("font-size", "10px")
-  .attr("text-anchor", d => d.angle > 180 ? "end" : "start")
-  .attr("alignment-baseline", "middle");
-
-// Add central text for Denver
-svg.append("text")
-  .attr("x", centerX)
-  .attr("y", centerY)
-  .text("Denver, PA")
-  .attr("font-size", "14px")
   .attr("text-anchor", "middle")
-  .attr("alignment-baseline", "middle");
-
-
-//#endregion
-
-
-// #region Chart 3
-const liquidMapping = {
-    "Olive Oil": "Olive Oil",
-    "Extra Virgin Olive Oil Organic": "Extra Virgin Olive Oil",
-    "Olive Oil Organic": "Olive Oil",
-    "Rapeseed": "Rapeseed Oil",
-    "Rapeseed Oil": "Rapeseed Oil"
-  };
-  
-  const normalizeLiquid = liquid =>
-    liquid
-      .split(",") // Split by comma
-      .map(l => l.trim()) // Remove extra spaces
-      .map(l => liquidMapping[l] || l) // Map to the unified category or keep as-is
-      .filter((v, i, a) => a.indexOf(v) === i) // Remove duplicates
-      .sort(); // Sort alphabetically (returns array for multiple counting)
-  
-  const chart4Data = Array.from(
-    d3.rollup(
-      data.filter(d => d.Origin !== "?"),
-      v => {
-        const liquidCounts = {};
-        v.forEach(d => {
-          const normalizedLiquids = normalizeLiquid(d.Liquid);
-          normalizedLiquids.forEach(l => {
-            liquidCounts[l] = (liquidCounts[l] || 0) + 1; // Increment count for each component
-          });
-        });
-        return Object.entries(liquidCounts).map(([liquid, count]) => ({ liquid, count }));
-      },
-      d => d.Origin // Group by country
-    ),
-    ([country, liquids]) => ({
-      country, // Country name
-      liquids // Array of normalized liquid types and their counts
-    })
-  );
-  
-  console.log("Chart 4 Data:", chart4Data);
-
-
-  const width3 = 800;
-const height3 = 600;
-
-const svg3 = d3
-  .select("#chart4")
-  .append("svg")
-  .attr("width", width3)
-  .attr("height", height3);
-
-// Prepare a flattened dataset for packed bubbles
-const flatData = [];
-chart4Data.forEach(({ country, liquids }) => {
-  liquids.forEach(({ liquid, count }) => {
-    flatData.push({ country, liquid, count });
-  });
-});
-
-// Create a hierarchy for the packed layout
-const root = d3
-  .hierarchy({ children: flatData })
-  .sum(d => d.count) // Use the count to size bubbles
-  .sort((a, b) => b.value - a.value); // Sort largest to smallest
-
-// Create a packed layout
-const pack = d3
-  .pack()
-  .size([width3, height3])
-  .padding(5);
-
-const nodes = pack(root).leaves();
-
-
-// Add bubbles
-const bubbles = svg3
-  .selectAll("circle")
-  .data(nodes)
-  .enter()
-  .append("circle")
-  .attr("cx", d => d.x)
-  .attr("cy", d => d.y)
-  .attr("r", d => d.r)
-  .attr("fill", d => countryColors[d.data.country])
-  .attr("stroke", "black")
-  .attr("stroke-width", 0.5);
-
-// Add text labels for liquids
-svg3
-  .selectAll("text")
-  .data(nodes)
-  .enter()
-  .append("text")
-  .attr("x", d => d.x)
-  .attr("y", d => d.y)
-  .attr("text-anchor", "middle")
-  .attr("dy", "0.3em")
-  .text(d => d.data.liquid)
-  .style("font-size", d => Math.min(d.r / 2, 12) + "px") // Adjust font size based on radius
-  .style("pointer-events", "none"); // Prevent interaction
-
-
-
-
-// #endregion
-// #region Chart 4
-
-// Chart 3 Data Processing
-// Step 1: Calculate total number of fish with Rarity > 0
-const totalFish = data.filter(d => d.Rarity > 0).length;
-// console.log("Total Number of Fish with Rarity Scores:", totalFish);
-
-// Step 2: Prepare chart3Data with rarity percentages and quantities
-const chart3Data = Array.from(
-  d3.rollup(
-      data,
-      v => ({
-          quantity: v.length,          // Count the number of entries
-          totalScore: d3.sum(v, d => d.Rarity), // Aggregate rarity scores
-      }),
-      d => d.Price, // Group by price
-      d => d.Type  // Then group by fish type within each price group
-  ),
-  ([price, typeMap]) => ({
-      price, // Price level
-      types: Array.from(typeMap, ([type, values]) => ({
-          fishType: type, // Fish type
-          quantity: values.quantity, // Total quantity for this type at this price
-          Rarity: (values.totalScore / totalFish).toFixed(2), // Total rarity score divided by totalFish
-      }))
+  .attr("alignment-baseline", "middle")
+  .attr("fill", d => countryColors[d.country] || "black") // Color text by country
+  .attr("transform", d => {
+    const x = centerX + (radiusScale2(d.distance) + labelOffset) * Math.cos((d.angle - 90) * Math.PI / 180);
+    const y = centerY + (radiusScale2(d.distance) + labelOffset) * Math.sin((d.angle - 90) * Math.PI / 180);
+    let rotation = d.angle - 90; // Default rotation
+    if (flippedCountries.includes(d.country)) {
+      rotation += 180; // Flip for readability
+    }
+    return `rotate(${rotation}, ${x}, ${y})`;
   })
-);
-console.log("Chart 3 Data:", chart3Data);
-
-
-// Step 3: Determine fish types and sort by total rarity score across all prices
-const sortedFishTypes = Array.from(
-  d3.rollup(
-      chart3Data.flatMap(d => d.types), // Flatten types across all price levels
-      v => d3.sum(v, d => +d.Rarity),  // Sum Rarity values for each type
-      d => d.fishType // Group by fish type
-  ),
-  ([fishType, totalRarity]) => ({ fishType, totalRarity }) // Map to an array
-)
-  .sort((a, b) => b.totalRarity - a.totalRarity) // Sort by total rarity descending
-  .map(d => d.fishType); // Extract sorted fish types
-// console.log("Sorted Fish Types by Total Rarity:", sortedFishTypes);
-
-
-///Actual Chart///
-
-// Define chart dimensions and margins
-const margin4 = { top: 20, right: 30, bottom: 40, left: 50 };
-const width4 = 1400 - margin4.left - margin4.right;
-const height4 = 400 - margin4.top - margin4.bottom;
-
-// Create the SVG container
-const svg4 = d3
-  .select("body")
-  .append("svg")
-  .attr("width", width4 + margin4.left + margin4.right)
-  .attr("height", height4 + margin4.top + margin4.bottom)
-  .append("g")
-  .attr("transform", `translate(${margin4.left}, ${margin4.top})`);
-
-
-// Process and sort stack data for chart
-const stackData = chart3Data
-  .map(d => ({
-    price: d.price,
-    ...Object.fromEntries(
-      sortedFishTypes.map(t => [t, d.types.find(type => type.fishType === t)?.quantity || 0])
-    )
-  }));
-
-console.log("Processed stackData for Quantity:", stackData);
-
-const xScale = d3
-  .scaleBand()
-  .domain(stackData.map(d => d.price))
-  .range([0, width4])
-  .padding(0.2);
-
-const yScale = d3
-  .scaleLinear()
-  .domain([
-    0,
-    d3.max(stackData, d => d3.sum(sortedFishTypes, t => d[t] || 0)) // Sum of quantities
-  ])
-  .nice()
-  .range([height4, 0]);
-
-const colorScale = d3.scaleOrdinal().domain(sortedFishTypes).range(d3.schemeTableau10);
-
-const stackGenerator = d3.stack().keys(sortedFishTypes);
-const series = stackGenerator(stackData);
-
-// Add X-axis
-svg4
-  .append("g")
-  .attr("transform", `translate(0, ${height4})`)
-  .call(d3.axisBottom(xScale).tickFormat(d => `$${d}`));
-
-// Add Y-axis
-svg4.append("g").call(d3.axisLeft(yScale));
-
-
-// Define the tooltip
-const tooltip = d3.select("#tooltip");
-
-// Bars with hover interaction
-svg4
-  .selectAll("g.series")
-  .data(series)
-  .join("g")
-  .attr("class", "series")
-  .attr("fill", d => colorScale(d.key))
-  .selectAll("rect")
-  .data(d => d.map(e => ({ ...e, type: d.key }))) // Include type in the rect data
-  .join("rect")
-  .attr("x", d => xScale(d.data.price))
-  .attr("y", d => yScale(d[1]))
-  .attr("height", d => yScale(d[0]) - yScale(d[1]))
-  .attr("width", xScale.bandwidth())
   .on("mouseover", function (event, d) {
     tooltip
-      .style("opacity", 1)
-      .html(`Price: $${d.data.price}<br>Type: ${d.type}<br>Quantity: ${d[1] - d[0]}`)
+      .style("visibility", "visible")
+      .html(`<strong>${d.country}</strong><br>Count: ${d.count}`)
       .style("left", `${event.pageX + 10}px`)
       .style("top", `${event.pageY + 10}px`);
   })
@@ -684,10 +488,266 @@ svg4
       .style("top", `${event.pageY + 10}px`);
   })
   .on("mouseout", function () {
-    tooltip.style("opacity", 0);
+    tooltip.style("visibility", "hidden");
   });
 
 
 
-// #endregion
+// Add central text for Denver
+svg2.append("text")
+  .attr("x", centerX)
+  .attr("y", centerY)
+  .text("Denver, PA")
+  .attr("font-size", "14px")
+  .attr("text-anchor", "middle")
+  .attr("alignment-baseline", "middle");
+
+
+
+
+
+//#endregion
+
+// // #region Chart 3 oil bubbles
+// const liquidMapping = {
+//     "Olive Oil": "Olive Oil",
+//     "Extra Virgin Olive Oil Organic": "Extra Virgin Olive Oil",
+//     "Olive Oil Organic": "Olive Oil",
+//     "Rapeseed": "Rapeseed Oil",
+//     "Rapeseed Oil": "Rapeseed Oil"
+//   };
+  
+//   const normalizeLiquid = liquid =>
+//     liquid
+//       .split(",") // Split by comma
+//       .map(l => l.trim()) // Remove extra spaces
+//       .map(l => liquidMapping[l] || l) // Map to the unified category or keep as-is
+//       .filter((v, i, a) => a.indexOf(v) === i) // Remove duplicates
+//       .sort(); // Sort alphabetically (returns array for multiple counting)
+  
+//   const chart4Data = Array.from(
+//     d3.rollup(
+//       data.filter(d => d.Origin !== "?"),
+//       v => {
+//         const liquidCounts = {};
+//         v.forEach(d => {
+//           const normalizedLiquids = normalizeLiquid(d.Liquid);
+//           normalizedLiquids.forEach(l => {
+//             liquidCounts[l] = (liquidCounts[l] || 0) + 1; // Increment count for each component
+//           });
+//         });
+//         return Object.entries(liquidCounts).map(([liquid, count]) => ({ liquid, count }));
+//       },
+//       d => d.Origin // Group by country
+//     ),
+//     ([country, liquids]) => ({
+//       country, // Country name
+//       liquids // Array of normalized liquid types and their counts
+//     })
+//   );
+  
+//   console.log("Chart 4 Data:", chart4Data);
+
+
+//   const width3 = 800;
+// const height3 = 600;
+
+// const svg3 = d3
+//   .select("#chart4")
+//   .append("svg")
+//   .attr("width", width3)
+//   .attr("height", height3);
+
+// // Prepare a flattened dataset for packed bubbles
+// const flatData = [];
+// chart4Data.forEach(({ country, liquids }) => {
+//   liquids.forEach(({ liquid, count }) => {
+//     flatData.push({ country, liquid, count });
+//   });
+// });
+
+// // Create a hierarchy for the packed layout
+// const root = d3
+//   .hierarchy({ children: flatData })
+//   .sum(d => d.count) // Use the count to size bubbles
+//   .sort((a, b) => b.value - a.value); // Sort largest to smallest
+
+// // Create a packed layout
+// const pack = d3
+//   .pack()
+//   .size([width3, height3])
+//   .padding(5);
+
+// const nodes = pack(root).leaves();
+
+
+// // Add bubbles
+// const bubbles = svg3
+//   .selectAll("circle")
+//   .data(nodes)
+//   .enter()
+//   .append("circle")
+//   .attr("cx", d => d.x)
+//   .attr("cy", d => d.y)
+//   .attr("r", d => d.r)
+//   .attr("fill", d => countryColors[d.data.country])
+//   .attr("stroke", "black")
+//   .attr("stroke-width", 0.5);
+
+// // Add text labels for liquids
+// svg3
+//   .selectAll("text")
+//   .data(nodes)
+//   .enter()
+//   .append("text")
+//   .attr("x", d => d.x)
+//   .attr("y", d => d.y)
+//   .attr("text-anchor", "middle")
+//   .attr("dy", "0.3em")
+//   .text(d => d.data.liquid)
+//   .style("font-size", d => Math.min(d.r / 2, 12) + "px") // Adjust font size based on radius
+//   .style("pointer-events", "none"); // Prevent interaction
+
+
+
+
+// // #endregion
+// // #region Chart 4 stacked bars
+
+// // Chart 3 Data Processing
+// // Step 1: Calculate total number of fish with Rarity > 0
+// const totalFish = data.filter(d => d.Rarity > 0).length;
+// // console.log("Total Number of Fish with Rarity Scores:", totalFish);
+
+// // Step 2: Prepare chart3Data with rarity percentages and quantities
+// const chart3Data = Array.from(
+//   d3.rollup(
+//       data,
+//       v => ({
+//           quantity: v.length,          // Count the number of entries
+//           totalScore: d3.sum(v, d => d.Rarity), // Aggregate rarity scores
+//       }),
+//       d => d.Price, // Group by price
+//       d => d.Type  // Then group by fish type within each price group
+//   ),
+//   ([price, typeMap]) => ({
+//       price, // Price level
+//       types: Array.from(typeMap, ([type, values]) => ({
+//           fishType: type, // Fish type
+//           quantity: values.quantity, // Total quantity for this type at this price
+//           Rarity: (values.totalScore / totalFish).toFixed(2), // Total rarity score divided by totalFish
+//       }))
+//   })
+// );
+// console.log("Chart 3 Data:", chart3Data);
+
+
+// // Step 3: Determine fish types and sort by total rarity score across all prices
+// const sortedFishTypes = Array.from(
+//   d3.rollup(
+//       chart3Data.flatMap(d => d.types), // Flatten types across all price levels
+//       v => d3.sum(v, d => +d.Rarity),  // Sum Rarity values for each type
+//       d => d.fishType // Group by fish type
+//   ),
+//   ([fishType, totalRarity]) => ({ fishType, totalRarity }) // Map to an array
+// )
+//   .sort((a, b) => b.totalRarity - a.totalRarity) // Sort by total rarity descending
+//   .map(d => d.fishType); // Extract sorted fish types
+// // console.log("Sorted Fish Types by Total Rarity:", sortedFishTypes);
+
+
+// ///Actual Chart///
+
+// // Define chart dimensions and margins
+// const margin4 = { top: 20, right: 30, bottom: 40, left: 50 };
+// const width4 = 1400 - margin4.left - margin4.right;
+// const height4 = 400 - margin4.top - margin4.bottom;
+
+// // Create the SVG container
+// const svg4 = d3
+//   .select("body")
+//   .append("svg")
+//   .attr("width", width4 + margin4.left + margin4.right)
+//   .attr("height", height4 + margin4.top + margin4.bottom)
+//   .append("g")
+//   .attr("transform", `translate(${margin4.left}, ${margin4.top})`);
+
+
+// // Process and sort stack data for chart
+// const stackData = chart3Data
+//   .map(d => ({
+//     price: d.price,
+//     ...Object.fromEntries(
+//       sortedFishTypes.map(t => [t, d.types.find(type => type.fishType === t)?.quantity || 0])
+//     )
+//   }));
+
+// console.log("Processed stackData for Quantity:", stackData);
+
+// const xScale = d3
+//   .scaleBand()
+//   .domain(stackData.map(d => d.price))
+//   .range([0, width4])
+//   .padding(0.2);
+
+// const yScale = d3
+//   .scaleLinear()
+//   .domain([
+//     0,
+//     d3.max(stackData, d => d3.sum(sortedFishTypes, t => d[t] || 0)) // Sum of quantities
+//   ])
+//   .nice()
+//   .range([height4, 0]);
+
+// const colorScale = d3.scaleOrdinal().domain(sortedFishTypes).range(d3.schemeTableau10);
+
+// const stackGenerator = d3.stack().keys(sortedFishTypes);
+// const series = stackGenerator(stackData);
+
+// // Add X-axis
+// svg4
+//   .append("g")
+//   .attr("transform", `translate(0, ${height4})`)
+//   .call(d3.axisBottom(xScale).tickFormat(d => `$${d}`));
+
+// // Add Y-axis
+// svg4.append("g").call(d3.axisLeft(yScale));
+
+
+// // Define the tooltip
+// const tooltip = d3.select("#tooltip");
+
+// // Bars with hover interaction
+// svg4
+//   .selectAll("g.series")
+//   .data(series)
+//   .join("g")
+//   .attr("class", "series")
+//   .attr("fill", d => colorScale(d.key))
+//   .selectAll("rect")
+//   .data(d => d.map(e => ({ ...e, type: d.key }))) // Include type in the rect data
+//   .join("rect")
+//   .attr("x", d => xScale(d.data.price))
+//   .attr("y", d => yScale(d[1]))
+//   .attr("height", d => yScale(d[0]) - yScale(d[1]))
+//   .attr("width", xScale.bandwidth())
+//   .on("mouseover", function (event, d) {
+//     tooltip
+//       .style("opacity", 1)
+//       .html(`Price: $${d.data.price}<br>Type: ${d.type}<br>Quantity: ${d[1] - d[0]}`)
+//       .style("left", `${event.pageX + 10}px`)
+//       .style("top", `${event.pageY + 10}px`);
+//   })
+//   .on("mousemove", function (event) {
+//     tooltip
+//       .style("left", `${event.pageX + 10}px`)
+//       .style("top", `${event.pageY + 10}px`);
+//   })
+//   .on("mouseout", function () {
+//     tooltip.style("opacity", 0);
+//   });
+
+
+
+// // #endregion
 

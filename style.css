@@ -72,3 +72,19 @@ main {
     height: 50px; /* Set a fixed height to maintain alignment */
     display: block; /* Ensure block-level layout */
 }
+
+#tooltip {
+    position: absolute;
+    visibility: hidden;
+    background: white;
+    border: 1px solid black;
+    padding: 5px;
+    border-radius: 3px;
+    pointer-events: none;
+    opacity: 1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Optional: Adds a subtle shadow for better visibility */
+    font-size: 12px; /* Optional: Adjust the font size */
+    z-index: 100; /* Ensures it appears on top */
+}
+
+
